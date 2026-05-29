@@ -6,7 +6,7 @@
 >
 > TP-Link and Omada are trademarks of their respective owners. They are referenced only to describe compatibility with the Omada Open API.
 >
-> Use this software only on networks you own or are aFuthorized to manage.
+> Use this software only on networks you own or are authorized to manage.
 
 ---
 
