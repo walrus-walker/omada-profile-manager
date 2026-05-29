@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+{% block title %}Settings — Net Profile Manager{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>Settings</h1>
+</div>
+
+<!-- Missing variables warning -->
+{% if missing_vars %}
+<div class="card mb-2" style="border-color:#fca5a5;background:#fff5f5">
+  <div class="card-header" style="border-color:#fca5a5">
+    <span class="card-title" style="color:var(--color-danger)">⚠ Missing Configuration</span>
+  </div>
+  <div class="card-body">
+    <p class="text-sm text-muted" style="margin-bottom:0.75rem">
+      The following required variables are not set. The app will not be able to
+      connect to the Omada controller.
+    </p>
+    <ul style="padding-left:1.5rem;font-family:monospace;font-size:0.875rem;margin-bottom:0.75rem">
+      {% for v in missing_vars %}
+      <li style="margin:0.25rem 0;color:var(--color-danger)">{{ v }}</li>
+      {% endfor %}
+    </ul>
+    <p class="text-sm text-muted">
+      Edit your <code>.env</code> file (or re-run <code>./scripts/setup.sh</code>)
+      and restart the container.
+    </p>
+  </div>
+</div>
+{% endif %}
+
+<!-- Dark Mode -->
+<div class="card mb-2">
+  <div class="card-header">
+    <span class="card-title">&#127763; Appearance</span>
+    <span class="badge {% if dark_mode() %}badge-online{% else %}badge-offline{% endif %}">
+      {% if dark_mode() %}Dark{% else %}Light{% endif %}
+    </span>
+  </div>
+  <div class="card-body">
+    <p class="text-sm text-muted" style="margin-bottom:0.75rem">
+      Switch between light and dark theme. Takes effect immediately.
+    </p>
+    <form method="post" action="/settings/dark_mode">
+      <label class="toggle-switch">
+        <input type="checkbox" name="enabled" value="on"
+               {% if dark_mode() %}checked{% endif %}
+               onchange="this.form.submit()">
+        <span class="toggle-track"><span class="toggle-thumb"></span></span>
+        <span style="margin-left:0.75rem">Dark Mode</span>
+      </label>
+    </form>
+  </div>
+</div>
+
+<!-- Timezone -->
+<div class="card mb-2">
+  <div class="card-header">
+    <span class="card-title">&#127758; Timezone</span>
+    <span class="badge badge-online" style="font-size:0.75rem">{{ current_timezone }}</span>
+  </div>
+  <div class="card-body">
+    <p class="text-sm text-muted" style="margin-bottom:0.75rem">
+      Used to display timer times and evaluate recurring pause/resume schedules.
+    </p>
+    <form method="post" action="/settings/timezone">
+      <div class="form-group" style="margin-bottom:1rem">
+        <label for="timezone-select">Select Timezone</label>
+        <select id="timezone-select" name="timezone" style="width:100%;max-width:480px">
+          {% for group_name, options in timezone_options %}
+          <optgroup label="{{ group_name }}">
+            {% for tz_value, tz_label in options %}
+            <option value="{{ tz_value }}" {% if tz_value == current_timezone %}selected{% endif %}>
+              {{ tz_label }}
+            </option>
+            {% endfor %}
+          </optgroup>
+          {% endfor %}
+        </select>
+      </div>
+      <button type="submit" class="btn btn-primary">Save Timezone</button>
+    </form>
+  </div>
+</div>
+
+<!-- How to update config -->
+<div class="card mb-2">
+  <div class="card-header">
+    <span class="card-title">Update Configuration</span>
+  </div>
+  <div class="card-body">
+    <div class="setting-section">
+      <h3>Quickest way (guided setup)</h3>
+      <p class="text-sm text-muted" style="margin-bottom:0.75rem">
+        Run the setup script again — it will walk you through re-entering values
+        and restart the container automatically.
+      </p>
+      <pre style="background:#f3f4f6;border-radius:6px;padding:0.75rem;font-size:0.8rem;overflow-x:auto">./scripts/setup.sh</pre>
+    </div>
+    <div class="setting-section">
+      <h3>Manual way</h3>
+      <ol style="padding-left:1.5rem;font-size:0.875rem;line-height:2.2">
+        <li>Edit <code>.env</code> in the project directory</li>
+        <li>Restart the container: <code>docker compose restart</code></li>
+      </ol>
+    </div>
+  </div>
+</div>
+
+<!-- Where credentials come from -->
+<div class="card">
+  <div class="card-header">
+    <span class="card-title">Where Omada API Credentials Come From</span>
+  </div>
+  <div class="card-body">
+    <p class="text-sm text-muted" style="margin-bottom:1rem">
+      This app connects to your existing Omada Controller using the Omada Open API.
+      You do not create the API — Omada already has it.
+      You register an API application inside the Omada web UI so this app can authenticate.
+    </p>
+    <ol style="padding-left:1.5rem;font-size:0.875rem;line-height:2.4">
+      <li>Log in to the <strong>Omada Controller web UI</strong></li>
+      <li>Switch to <strong>Global View</strong> (top-left dropdown)</li>
+      <li>Go to <strong>Settings → Platform Integration → Open API</strong></li>
+      <li>Click <strong>Add</strong> to create a new Open API application</li>
+      <li>Select <strong>Client</strong> mode when prompted</li>
+      <li>Copy the generated <strong>Client ID</strong>, <strong>Client Secret</strong>,
+          and <strong>Omada ID</strong></li>
+      <li>Re-run <code>./scripts/setup.sh</code> and enter those values when prompted</li>
+    </ol>
+  </div>
+</div>
+{% endblock %}

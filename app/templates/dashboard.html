@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — Net Profile Manager{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>Dashboard</h1>
+</div>
+
+<!-- Stats -->
+<div class="stats-grid">
+  <div class="stat-card">
+    <div class="stat-value">{{ client_count }}</div>
+    <div class="stat-label">Omada Clients</div>
+    {% if not has_clients %}
+    <div class="text-xs text-muted mt-1">Refresh from Devices page</div>
+    {% endif %}
+  </div>
+  <div class="stat-card">
+    <div class="stat-value">{{ profile_count }}</div>
+    <div class="stat-label">Profiles</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-value">{{ assigned_count }}</div>
+    <div class="stat-label">Assigned Devices</div>
+  </div>
+</div>
+
+<!-- Quick actions -->
+<div class="card mb-2">
+  <div class="card-header">
+    <span class="card-title">Quick Links</span>
+  </div>
+  <div class="card-body">
+    <div class="btn-group quick-links">
+      <a href="/devices"  class="btn btn-secondary">View Devices</a>
+      <a href="/profiles" class="btn btn-secondary">View Profiles</a>
+      <a href="/settings" class="btn btn-secondary">Settings</a>
+    </div>
+    {% if not has_clients %}
+    <p class="text-sm text-muted mt-1">
+      No clients cached yet. Go to
+      <a href="/devices">Devices</a> and click <strong>Refresh from Omada</strong>
+      to load your device list.
+    </p>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Recent actions -->
+<div class="card">
+  <div class="card-header">
+    <span class="card-title">Recent Actions</span>
+    <span class="text-xs text-muted">Last 10</span>
+  </div>
+  <div class="card-body" style="padding-top:0.5rem;padding-bottom:0.5rem">
+    {% if history %}
+    <ul class="history-list">
+      {% for item in history %}
+      <li class="history-item">
+        <span class="history-time">{{ item.created_at[:16].replace("T"," ") }} UTC</span>
+        <span class="history-body">
+          <strong class="history-action">{{ item.action | replace("_"," ") | title }}</strong>
+          — {{ item.target_type }}: <code class="font-mono text-xs">{{ item.target_value }}</code>
+          —
+          {% if item.status == "success" %}
+            <span class="status-ok">{{ item.status }}</span>
+          {% elif item.status == "error" %}
+            <span class="status-err">{{ item.status }}</span>
+          {% else %}
+            <span class="status-warn">{{ item.status }}</span>
+          {% endif %}
+          {% if item.message %}
+            <span class="text-muted text-xs"> — {{ item.message[:100] }}</span>
+          {% endif %}
+        </span>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="text-muted text-sm" style="padding:0.5rem 0">
+      No actions recorded yet. Actions appear here after pausing or resuming devices.
+    </p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en" {% if dark_mode() %}class="dark"{% endif %}>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#1b2d4f">
+  <title>{% block title %}Net Profile Manager{% endblock %}</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+<nav class="navbar" role="navigation" aria-label="Main navigation">
+  <div class="navbar-inner">
+    <span class="nav-brand">Net Profile Manager</span>
+
+    <button
+      class="nav-hamburger"
+      aria-label="Toggle navigation menu"
+      aria-expanded="false"
+      onclick="
+        var links = document.getElementById('nav-links');
+        var open  = links.classList.toggle('open');
+        this.setAttribute('aria-expanded', open);
+        this.textContent = open ? '✕' : '☰';
+      ">☰</button>
+
+    <div class="nav-links" id="nav-links" role="menubar">
+      <a href="/dashboard" role="menuitem">Dashboard</a>
+      <a href="/devices"   role="menuitem">Devices</a>
+      <a href="/profiles"  role="menuitem">Profiles</a>
+      <a href="/settings"  role="menuitem">Settings</a>
+      <form method="post" action="/logout" style="display:contents">
+        <button type="submit" class="nav-logout-btn" role="menuitem">Log out</button>
+      </form>
+    </div>
+  </div>
+</nav>
+
+<main class="container" role="main">
+  {% if flash_messages %}
+  <div class="flash-list" role="alert" aria-live="polite">
+    {% for msg in flash_messages %}
+    <div class="flash flash-{{ msg.category }}">{{ msg.message }}</div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {% block content %}{% endblock %}
+</main>
+
+</body>
+</html>

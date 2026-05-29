@@ -1,0 +1,234 @@
+{% extends "base.html" %}
+{% block title %}Profiles — Net Profile Manager{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>Profiles</h1>
+</div>
+
+<!-- Create profile form -->
+<div class="card mb-2">
+  <div class="card-header">
+    <span class="card-title">Create a New Profile</span>
+  </div>
+  <div class="card-body">
+    <form method="post" action="/profiles/create">
+      <div class="form-group">
+        <label for="name">Profile Name</label>
+        <input
+          type="text"
+          id="name"
+          name="name"
+          placeholder="e.g. Kids, Tablets, Guest"
+          required
+          autocomplete="off"
+        >
+      </div>
+      <div class="form-group" style="margin-bottom:1rem">
+        <label for="description">Description <span class="text-muted">(optional)</span></label>
+        <input
+          type="text"
+          id="description"
+          name="description"
+          placeholder="Any notes about this group"
+        >
+      </div>
+      <button type="submit" class="btn btn-primary">Create Profile</button>
+    </form>
+  </div>
+</div>
+
+<!-- Profile list -->
+{% if profiles %}
+
+<!-- Mobile: control cards (hidden on desktop) -->
+<div class="mobile-cards">
+  {% for profile in profiles %}
+  {% set dcount = profile_device_counts.get(profile.id, 0) %}
+  {% set bcount = profile_blocked_counts.get(profile.id, 0) %}
+  {% set ptimer = profile_timers.get(profile.id) %}
+  {% set pnext  = profile_next_actions.get(profile.id, "") %}
+  <div class="control-card">
+    <div class="control-card-header">
+      <div class="control-card-title-row">
+        <a href="/profiles/{{ profile.id }}" class="control-card-name-link">
+          <strong class="control-card-name">{{ profile.name }}</strong>
+        </a>
+        <div style="display:flex;gap:0.35rem;align-items:center;flex-shrink:0;flex-wrap:wrap">
+          <span class="count-pill">{{ dcount }} device{{ 's' if dcount != 1 else '' }}</span>
+          {% if bcount > 0 %}
+          <span class="badge badge-blocked">
+            {% if bcount == dcount %}All paused{% else %}{{ bcount }} paused{% endif %}
+          </span>
+          {% endif %}
+        </div>
+      </div>
+      {% if profile.description %}
+      <div class="control-card-desc">{{ profile.description }}</div>
+      {% endif %}
+      {% if ptimer %}
+      <div class="control-card-desc" style="margin-top:0.3rem">
+        <span class="timer-pill">&#9201; Until {{ ptimer.run_at_local }}</span>
+      </div>
+      {% endif %}
+      {% if pnext %}
+      <div class="control-card-desc" style="margin-top:0.3rem">
+        <span class="schedule-pill">&#128337; {{ pnext }}</span>
+      </div>
+      {% endif %}
+    </div>
+    <div class="control-card-actions">
+      <a href="/profiles/{{ profile.id }}" class="btn btn-secondary">Manage</a>
+      <!-- Quick pause timers -->
+      <div class="timer-btn-row">
+        {% for mins, label in [(15,"15m"),(30,"30m"),(60,"1h"),(120,"2h")] %}
+        <form method="post" action="/profiles/{{ profile.id }}/pause_timer">
+          <input type="hidden" name="duration_minutes" value="{{ mins }}">
+          <button type="submit" class="btn-timer">{{ label }}</button>
+        </form>
+        {% endfor %}
+      </div>
+      {% if ptimer %}
+        <form method="post" action="/profiles/{{ profile.id }}/cancel_timer">
+          <button type="submit" class="btn btn-secondary btn-sm">Cancel Timer</button>
+        </form>
+      {% endif %}
+      {% if bcount == dcount and dcount > 0 %}
+        {# All paused — only show Resume #}
+        <form method="post" action="/profiles/{{ profile.id }}/unblock"
+              onsubmit="return confirm('Resume ALL devices in profile \'{{ profile.name }}\'?')">
+          <button type="submit" class="btn btn-success">&#9654; Resume All</button>
+        </form>
+      {% elif bcount == 0 %}
+        {# None paused — only show Pause All #}
+        <form method="post" action="/profiles/{{ profile.id }}/block"
+              onsubmit="return confirm('Pause ALL devices in profile \'{{ profile.name }}\'?\n\nThis will pause internet access for {{ dcount }} device(s).')">
+          <button type="submit" class="btn btn-danger">&#9208; Pause All</button>
+        </form>
+      {% else %}
+        {# Mixed — show both #}
+        <form method="post" action="/profiles/{{ profile.id }}/block"
+              onsubmit="return confirm('Pause ALL devices in profile \'{{ profile.name }}\'?\n\nThis will pause internet access for {{ dcount }} device(s).')">
+          <button type="submit" class="btn btn-danger">&#9208; Pause All</button>
+        </form>
+        <form method="post" action="/profiles/{{ profile.id }}/unblock"
+              onsubmit="return confirm('Resume ALL devices in profile \'{{ profile.name }}\'?')">
+          <button type="submit" class="btn btn-success">&#9654; Resume All</button>
+        </form>
+      {% endif %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<!-- Desktop: table (hidden on mobile) -->
+<div class="desktop-table card responsive-table">
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Profile</th>
+          <th>Description</th>
+          <th>Devices</th>
+          <th>Status / Timer</th>
+          <th>Schedule</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for profile in profiles %}
+        {% set dcount = profile_device_counts.get(profile.id, 0) %}
+        {% set bcount = profile_blocked_counts.get(profile.id, 0) %}
+        {% set ptimer = profile_timers.get(profile.id) %}
+        {% set pnext  = profile_next_actions.get(profile.id, "") %}
+        <tr>
+          <td data-label="Profile" class="cell-primary">
+            <a href="/profiles/{{ profile.id }}">
+              <strong>{{ profile.name }}</strong>
+            </a>
+          </td>
+
+          <td data-label="Description" class="cell-secondary text-muted text-sm">
+            {{ profile.description or "—" }}
+          </td>
+
+          <td data-label="Devices" class="cell-secondary">
+            {{ dcount }} device{{ 's' if dcount != 1 else '' }}
+          </td>
+
+          <td data-label="Status / Timer" class="cell-badge">
+            {% if bcount == dcount and dcount > 0 %}
+              <span class="badge badge-blocked">All Paused</span>
+            {% elif bcount > 0 %}
+              <span class="badge badge-blocked">{{ bcount }} of {{ dcount }} Paused</span>
+            {% else %}
+              <span class="badge badge-allowed">Active</span>
+            {% endif %}
+            {% if ptimer %}
+              <span class="timer-pill" style="margin-top:2px;display:block">&#9201; Until {{ ptimer.run_at_local }}</span>
+            {% endif %}
+          </td>
+
+          <td data-label="Schedule" class="cell-secondary">
+            {% if pnext %}
+              <span class="schedule-pill">{{ pnext }}</span>
+            {% else %}
+              <span class="text-muted text-xs">—</span>
+            {% endif %}
+          </td>
+
+          <td data-label="Actions" class="actions-cell">
+            <div class="btn-group">
+              <a href="/profiles/{{ profile.id }}" class="btn btn-secondary btn-sm">Manage</a>
+              {% for mins, label in [(15,"15m"),(30,"30m"),(60,"1h"),(120,"2h")] %}
+              <form method="post" action="/profiles/{{ profile.id }}/pause_timer">
+                <input type="hidden" name="duration_minutes" value="{{ mins }}">
+                <button type="submit" class="btn-timer">{{ label }}</button>
+              </form>
+              {% endfor %}
+              {% if ptimer %}
+              <form method="post" action="/profiles/{{ profile.id }}/cancel_timer">
+                <button type="submit" class="btn btn-secondary btn-sm">Cancel Timer</button>
+              </form>
+              {% endif %}
+              {% if bcount == dcount and dcount > 0 %}
+                <form method="post" action="/profiles/{{ profile.id }}/unblock"
+                      onsubmit="return confirm('Resume ALL devices in profile \'{{ profile.name }}\'?')">
+                  <button type="submit" class="btn btn-success btn-sm">&#9654; Resume All</button>
+                </form>
+              {% elif bcount == 0 %}
+                <form method="post" action="/profiles/{{ profile.id }}/block"
+                      onsubmit="return confirm('Pause ALL devices in profile \'{{ profile.name }}\'?\n\nThis will pause internet access for {{ dcount }} device(s).')">
+                  <button type="submit" class="btn btn-danger btn-sm">&#9208; Pause All</button>
+                </form>
+              {% else %}
+                <form method="post" action="/profiles/{{ profile.id }}/block"
+                      onsubmit="return confirm('Pause ALL devices in profile \'{{ profile.name }}\'?\n\nThis will pause internet access for {{ dcount }} device(s).')">
+                  <button type="submit" class="btn btn-danger btn-sm">&#9208; Pause All</button>
+                </form>
+                <form method="post" action="/profiles/{{ profile.id }}/unblock"
+                      onsubmit="return confirm('Resume ALL devices in profile \'{{ profile.name }}\'?')">
+                  <button type="submit" class="btn btn-success btn-sm">&#9654; Resume All</button>
+                </form>
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% else %}
+<div class="card">
+  <div class="empty-state">
+    <p>No profiles yet.</p>
+    <p class="text-sm">
+      Create a profile above &mdash; for example, &ldquo;Kids&rdquo; or &ldquo;Tablets&rdquo; &mdash;
+      then assign devices to it so you can pause them all with one tap.
+    </p>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#1b2d4f">
+  <title>Login — Net Profile Manager</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<div class="login-page">
+
+  <div>
+    {% if flash_messages %}
+    <div class="flash-list" style="margin-bottom:1rem" role="alert" aria-live="polite">
+      {% for msg in flash_messages %}
+      <div class="flash flash-{{ msg.category }}">{{ msg.message }}</div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <div class="login-card">
+      <div class="login-logo" aria-hidden="true">🔒</div>
+      <h1>Parental Controller</h1>
+      <p class="login-subtitle">Enter your admin PIN to continue</p>
+
+      <form method="post" action="/login" autocomplete="on">
+        <div class="form-group" style="margin-bottom:1.25rem">
+          <label for="pin" class="sr-only">Admin PIN</label>
+          <input
+            type="password"
+            id="pin"
+            name="pin"
+            class="pin-input"
+            inputmode="numeric"
+            autocomplete="current-password"
+            placeholder="••••"
+            autofocus
+            required
+            aria-label="Admin PIN"
+          >
+        </div>
+        <button type="submit" class="btn btn-primary btn-block btn-lg">
+          Unlock
+        </button>
+      </form>
+    </div>
+
+    <p class="login-note">
+      Use over LAN or VPN only — do not expose to the internet.
+    </p>
+  </div>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,396 @@
+{% extends "base.html" %}
+{% block title %}{{ profile.name }} — Net Profile Manager{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>{{ profile.name }}</h1>
+    {% if profile.description %}
+    <p class="text-muted text-sm" style="margin-top:0.25rem">{{ profile.description }}</p>
+    {% endif %}
+  </div>
+  <a href="/profiles" class="btn btn-secondary btn-sm">&larr; All Profiles</a>
+</div>
+
+<!-- Compute profile pause state from known device data -->
+{% set ns = namespace(any_blocked=false, all_blocked=true, has_known=false, blocked_count=0) %}
+{% for entry in devices %}
+  {% if entry.omada %}
+    {% set ns.has_known = true %}
+    {% if entry.omada.blocked %}
+      {% set ns.any_blocked = true %}
+      {% set ns.blocked_count = ns.blocked_count + 1 %}
+    {% else %}
+      {% set ns.all_blocked = false %}
+    {% endif %}
+  {% endif %}
+{% endfor %}
+
+<!-- ==========================================
+     Pause / Resume — mobile-first primary actions
+     ========================================== -->
+<div class="card mb-2">
+  <div class="card-header">
+    <span class="card-title">Profile Controls</span>
+    <span class="text-xs text-muted">{{ devices | length }} device{{ 's' if devices | length != 1 else '' }} assigned</span>
+  </div>
+  <div class="card-body">
+    {% if ns.has_known %}
+    <p class="text-sm mb-1" style="margin-bottom:0.75rem">
+      {% if ns.all_blocked %}
+        <span class="status-err">&#9208; All {{ ns.blocked_count }} device{{ 's' if ns.blocked_count != 1 else '' }} are currently paused.</span>
+      {% elif ns.any_blocked %}
+        <span class="status-warn">&#9208; {{ ns.blocked_count }} of {{ devices | length }} device{{ 's' if devices | length != 1 else '' }} {{ 'are' if ns.blocked_count != 1 else 'is' }} currently paused.</span>
+      {% else %}
+        <span class="status-ok">&#9654; All devices are active.</span>
+      {% endif %}
+    </p>
+    {% endif %}
+
+    <!-- Active timer banner -->
+    {% if timer %}
+    <div class="timer-status mb-1" style="margin-bottom:0.75rem">
+      <span class="timer-status-text">&#9201; Paused until <strong>{{ timer_display }}</strong></span>
+      <form method="post" action="/profiles/{{ profile.id }}/cancel_timer" style="display:contents">
+        <button type="submit" class="btn btn-secondary btn-sm">Cancel Timer</button>
+      </form>
+    </div>
+    {% endif %}
+
+    <!-- Quick pause timers -->
+    <p class="text-xs text-muted" style="margin-bottom:0.35rem">Pause for:</p>
+    <div class="timer-btn-row">
+      {% for mins, label in [(15,"15 min"),(30,"30 min"),(60,"1 hour"),(120,"2 hours")] %}
+      <form method="post" action="/profiles/{{ profile.id }}/pause_timer">
+        <input type="hidden" name="duration_minutes" value="{{ mins }}">
+        <button type="submit" class="btn-timer">{{ label }}</button>
+      </form>
+      {% endfor %}
+      <form method="post" action="/profiles/{{ profile.id }}/pause_timer" class="timer-until-row" style="margin-top:0;display:flex;gap:var(--sp-2);align-items:center">
+        <span class="text-xs text-muted">Until:</span>
+        <input type="time" name="until_time" required style="width:auto;min-width:110px;min-height:36px">
+        <button type="submit" class="btn-timer">Go</button>
+      </form>
+    </div>
+
+    <div class="profile-actions-bar" style="margin-top:1rem">
+      <form method="post" action="/profiles/{{ profile.id }}/block"
+            onsubmit="return confirm('Pause ALL devices in \'{{ profile.name }}\'?\n\nThis will cut internet access for every device in this profile.')">
+        <button type="submit" class="btn btn-danger btn-hero">
+          &#9208; Pause Entire Profile
+        </button>
+      </form>
+      <form method="post" action="/profiles/{{ profile.id }}/unblock"
+            onsubmit="return confirm('Resume ALL devices in \'{{ profile.name }}\'?')">
+        <button type="submit" class="btn btn-success btn-hero">
+          &#9654; Resume Entire Profile
+        </button>
+      </form>
+    </div>
+    <p class="text-xs text-muted mt-1">
+      Pausing cuts internet access for all devices in this profile. Resuming restores it.
+    </p>
+  </div>
+</div>
+
+<!-- ==========================================
+     Assigned devices
+     ========================================== -->
+{% if devices %}
+
+<!-- Mobile: control cards (hidden on desktop) -->
+<div class="mobile-cards">
+  {% for entry in devices %}
+  {% set d = entry.profile_device %}
+  {% set o = entry.omada %}
+  <div class="control-card">
+    <div class="control-card-header">
+      <div class="control-card-title-row">
+        <strong class="control-card-name">{{ d.local_name or (o.name if o else "") or d.mac }}</strong>
+        <div class="control-card-badges">
+          {% if o %}
+            {% if o.online %}
+              <span class="badge badge-online">Online</span>
+            {% else %}
+              <span class="badge badge-offline">Offline</span>
+            {% endif %}
+            {% if o.blocked %}
+              <span class="badge badge-blocked">Paused</span>
+            {% else %}
+              <span class="badge badge-allowed">Active</span>
+            {% endif %}
+          {% else %}
+            <span class="badge badge-unknown">Unknown</span>
+          {% endif %}
+        </div>
+      </div>
+      <div class="control-card-meta">{{ d.mac }}{% if o and o.ip %} &middot; {{ o.ip }}{% endif %}</div>
+    </div>
+    <div class="control-card-actions">
+      {% if entry.timer %}
+      <div class="timer-status" style="font-size:0.75rem;padding:0.35rem 0.6rem">
+        &#9201; Until <strong>{{ entry.timer_display }}</strong>
+        <form method="post" action="/devices/{{ d.mac }}/cancel_timer" style="display:contents">
+          <input type="hidden" name="back_url" value="/profiles/{{ profile.id }}">
+          <button type="submit" class="btn btn-secondary btn-sm">Cancel</button>
+        </form>
+      </div>
+      {% endif %}
+      {% if o and o.blocked %}
+      <form method="post" action="/profiles/{{ profile.id }}/devices/{{ d.mac }}/unblock"
+            onsubmit="return confirm('Resume {{ d.local_name or d.mac }}?')">
+        <button type="submit" class="btn btn-success">&#9654; Resume</button>
+      </form>
+      {% else %}
+      <form method="post" action="/profiles/{{ profile.id }}/devices/{{ d.mac }}/block"
+            onsubmit="return confirm('Pause {{ d.local_name or d.mac }}?')">
+        <button type="submit" class="btn btn-danger">&#9208; Pause</button>
+      </form>
+      {% endif %}
+      <!-- Device quick timers -->
+      <div class="timer-btn-row">
+        {% for mins, label in [(15,"15m"),(30,"30m"),(60,"1h"),(120,"2h")] %}
+        <form method="post" action="/devices/{{ d.mac }}/pause_timer">
+          <input type="hidden" name="duration_minutes" value="{{ mins }}">
+          <button type="submit" class="btn-timer">{{ label }}</button>
+        </form>
+        {% endfor %}
+      </div>
+      <form method="post" action="/profiles/{{ profile.id }}/remove_device/{{ d.mac }}"
+            onsubmit="return confirm('Remove {{ d.local_name or d.mac }} from this profile?\n\nThis does not affect the device\'s connection — it just removes it from the profile.')">
+        <button type="submit" class="btn btn-secondary">Remove from Profile</button>
+      </form>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<!-- Desktop: table (hidden on mobile) -->
+<div class="desktop-table card responsive-table">
+  <div class="card-header">
+    <span class="card-title">Assigned Devices</span>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>MAC Address</th>
+          <th>IP</th>
+          <th>Connection</th>
+          <th>Access</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for entry in devices %}
+        {% set d = entry.profile_device %}
+        {% set o = entry.omada %}
+        <tr>
+          <td data-label="Name" class="cell-primary">
+            <strong>{{ d.local_name or (o.name if o else "") or d.mac }}</strong>
+          </td>
+
+          <td data-label="MAC" class="cell-secondary font-mono text-xs">{{ d.mac }}</td>
+
+          <td data-label="IP" class="cell-secondary">{{ o.ip if o else "—" }}</td>
+
+          <td data-label="Connection" class="cell-badge">
+            {% if o %}
+              {% if o.online %}
+                <span class="badge badge-online">Online</span>
+              {% else %}
+                <span class="badge badge-offline">Offline</span>
+              {% endif %}
+            {% else %}
+              <span class="badge badge-unknown">Unknown</span>
+            {% endif %}
+          </td>
+
+          <td data-label="Access" class="cell-badge">
+            {% if o %}
+              {% if o.blocked %}
+                <span class="badge badge-blocked">Paused</span>
+              {% else %}
+                <span class="badge badge-allowed">Active</span>
+              {% endif %}
+            {% else %}
+              <span class="badge badge-unknown">Unknown</span>
+            {% endif %}
+          </td>
+
+          <td data-label="Actions" class="actions-cell">
+            {% if entry.timer %}
+            <div style="margin-bottom:0.4rem">
+              <span class="timer-pill">&#9201; Until {{ entry.timer_display }}</span>
+              <form method="post" action="/devices/{{ d.mac }}/cancel_timer" style="display:inline">
+                <input type="hidden" name="back_url" value="/profiles/{{ profile.id }}">
+                <button type="submit" class="btn btn-secondary btn-sm" style="margin-left:4px">Cancel</button>
+              </form>
+            </div>
+            {% endif %}
+            <div class="btn-group">
+              {% if o and o.blocked %}
+              <form method="post" action="/profiles/{{ profile.id }}/devices/{{ d.mac }}/unblock"
+                    onsubmit="return confirm('Resume {{ d.local_name or d.mac }}?')">
+                <button type="submit" class="btn btn-success btn-sm">&#9654; Resume</button>
+              </form>
+              {% else %}
+              <form method="post" action="/profiles/{{ profile.id }}/devices/{{ d.mac }}/block"
+                    onsubmit="return confirm('Pause {{ d.local_name or d.mac }}?')">
+                <button type="submit" class="btn btn-danger btn-sm">&#9208; Pause</button>
+              </form>
+              {% endif %}
+              {% for mins, label in [(15,"15m"),(30,"30m"),(60,"1h"),(120,"2h")] %}
+              <form method="post" action="/devices/{{ d.mac }}/pause_timer">
+                <input type="hidden" name="duration_minutes" value="{{ mins }}">
+                <button type="submit" class="btn-timer">{{ label }}</button>
+              </form>
+              {% endfor %}
+              <form method="post" action="/profiles/{{ profile.id }}/remove_device/{{ d.mac }}"
+                    onsubmit="return confirm('Remove {{ d.local_name or d.mac }} from this profile?\n\nThis does not affect the device\'s connection — it just removes it from the profile.')">
+                <button type="submit" class="btn btn-secondary btn-sm">Remove</button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% else %}
+<div class="card">
+  <div class="empty-state">
+    <p>No devices assigned yet.</p>
+    <p class="text-sm">
+      Go to <a href="/devices">Devices</a>, find a device in the table,
+      and use the <strong>Add to Profile</strong> dropdown to assign it here.
+    </p>
+  </div>
+</div>
+{% endif %}
+
+<!-- ==========================================
+     Rename profile
+     ========================================== -->
+<div class="card mt-2">
+  <div class="card-header">
+    <span class="card-title">Rename Profile</span>
+  </div>
+  <div class="card-body">
+    <form method="post" action="/profiles/{{ profile.id }}/rename">
+      <div class="form-group">
+        <label for="rename-name">Profile Name</label>
+        <input type="text" id="rename-name" name="name" value="{{ profile.name }}" required>
+      </div>
+      <div class="form-group" style="margin-bottom:1rem">
+        <label for="rename-desc">Description</label>
+        <input type="text" id="rename-desc" name="description" value="{{ profile.description }}">
+      </div>
+      <button type="submit" class="btn btn-secondary">Save Changes</button>
+    </form>
+  </div>
+</div>
+
+<!-- ==========================================
+     Recurring Schedule
+     ========================================== -->
+<div class="card mt-2">
+  <div class="card-header">
+    <span class="card-title">&#128337; Recurring Schedule</span>
+    {% if schedule %}
+    <span class="badge {% if schedule.enabled %}badge-online{% else %}badge-offline{% endif %}">
+      {% if schedule.enabled %}Enabled{% else %}Disabled{% endif %}
+    </span>
+    {% endif %}
+  </div>
+  <div class="card-body">
+
+    {% if schedule and schedule.enabled and next_action %}
+    <div class="schedule-status" style="margin-bottom:0.75rem">
+      &#128337; {{ next_action }}
+    </div>
+    {% elif schedule and not schedule.enabled %}
+    <div class="schedule-status disabled" style="margin-bottom:0.75rem">
+      Schedule is disabled.
+    </div>
+    {% endif %}
+
+    {% if schedule %}
+    <div style="margin-bottom:0.75rem">
+      <form method="post" action="/profiles/{{ profile.id }}/schedule/toggle" style="display:inline">
+        <button type="submit" class="btn btn-secondary btn-sm">
+          {% if schedule.enabled %}Disable Schedule{% else %}Enable Schedule{% endif %}
+        </button>
+      </form>
+    </div>
+    {% endif %}
+
+    <form method="post" action="/profiles/{{ profile.id }}/schedule/save">
+      <div class="form-group">
+        <label>Days of Week</label>
+        <div class="days-grid">
+          {% set day_labels = [("0","Mon"),("1","Tue"),("2","Wed"),("3","Thu"),("4","Fri"),("5","Sat"),("6","Sun")] %}
+          {% set active = (schedule.days_of_week if schedule else "").split(",") %}
+          {% for val, lbl in day_labels %}
+          <label class="day-check">
+            <input type="checkbox" name="days_of_week" value="{{ val }}"
+              {% if val in active %}checked{% endif %}>
+            {{ lbl }}
+          </label>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="schedule-times">
+        <div class="form-group" style="margin-bottom:0">
+          <label for="pause_time">Pause At</label>
+          <input type="time" id="pause_time" name="pause_time"
+                 value="{{ schedule.pause_time if schedule else '' }}">
+        </div>
+        <div class="form-group" style="margin-bottom:0">
+          <label for="resume_time">Resume At</label>
+          <input type="time" id="resume_time" name="resume_time"
+                 value="{{ schedule.resume_time if schedule else '' }}">
+        </div>
+      </div>
+
+      <div class="form-group" style="margin-top:1rem">
+        <label for="timezone_name">Timezone</label>
+        <input type="text" id="timezone_name" name="timezone_name"
+               value="{{ schedule.timezone if schedule else app_timezone }}"
+               placeholder="e.g. America/Chicago">
+      </div>
+
+      <div style="display:flex;align-items:center;gap:1rem;margin-bottom:1rem">
+        <label style="display:flex;align-items:center;gap:0.5rem;font-weight:600;cursor:pointer">
+          <input type="checkbox" name="enabled" value="on"
+                 {% if not schedule or schedule.enabled %}checked{% endif %}
+                 style="width:18px;height:18px;min-height:unset;cursor:pointer;accent-color:var(--color-primary)">
+          Enable schedule
+        </label>
+      </div>
+
+      <button type="submit" class="btn btn-primary">Save Schedule</button>
+    </form>
+  </div>
+</div>
+
+<!-- ==========================================
+     Danger zone
+     ========================================== -->
+<div class="danger-zone">
+  <div class="danger-zone-title">&#9888; Danger Zone</div>
+  <p class="text-sm text-muted" style="margin-bottom:0.75rem">
+    Deleting a profile removes all device assignments from it.
+    The devices themselves are not affected.
+  </p>
+  <form method="post" action="/profiles/{{ profile.id }}/delete"
+        onsubmit="return confirm('Permanently delete profile \'{{ profile.name }}\'?\n\nAll device assignments for this profile will be removed.\nDevices themselves will not be affected.')">
+    <button type="submit" class="btn btn-danger">Delete This Profile</button>
+  </form>
+</div>
+
+{% endblock %}

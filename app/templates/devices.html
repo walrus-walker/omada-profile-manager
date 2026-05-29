@@ -1,0 +1,224 @@
+{% extends "base.html" %}
+{% block title %}Devices — Net Profile Manager{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>Devices</h1>
+  <form method="post" action="/devices/refresh">
+    <button type="submit" class="btn btn-primary">&#8635; Refresh from Omada</button>
+  </form>
+</div>
+
+{% if clients %}
+<p class="text-xs text-muted mb-2">
+  Last updated: {{ clients[0].updated_at[:16].replace("T"," ") }} UTC
+  &nbsp;&middot;&nbsp; {{ clients | length }} client{{ 's' if clients | length != 1 else '' }} cached
+</p>
+
+<!-- Mobile: control cards (hidden on desktop) -->
+<div class="mobile-cards">
+  {% for client in clients %}
+  <div class="control-card">
+    <div class="control-card-header">
+      <div class="control-card-title-row">
+        <strong class="control-card-name">{{ client.name or "Unknown" }}</strong>
+        <div class="control-card-badges">
+          {% if client.online %}
+            <span class="badge badge-online">Online</span>
+          {% else %}
+            <span class="badge badge-offline">Offline</span>
+          {% endif %}
+          {% if client.blocked %}
+            <span class="badge badge-blocked">Paused</span>
+          {% else %}
+            <span class="badge badge-allowed">Active</span>
+          {% endif %}
+        </div>
+      </div>
+      <div class="control-card-meta">{{ client.mac }}{% if client.ip %} &middot; {{ client.ip }}{% endif %}</div>
+      {% if client.mac in mac_profile_names and mac_profile_names[client.mac] %}
+      <div class="control-card-profiles">
+        {% for pname in mac_profile_names[client.mac] %}
+          <span class="badge badge-assigned">{{ pname }}</span>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </div>
+    <div class="control-card-actions">
+      {% set dtimer = device_timers.get(client.mac) %}
+      {% if dtimer %}
+      <div class="timer-status" style="font-size:0.75rem;padding:0.35rem 0.6rem">
+        &#9201; Until <strong>{{ device_timer_display[client.mac] }}</strong>
+        <form method="post" action="/devices/{{ client.mac }}/cancel_timer" style="display:contents">
+          <button type="submit" class="btn btn-secondary btn-sm">Cancel</button>
+        </form>
+      </div>
+      {% endif %}
+      {% if client.blocked %}
+      <form method="post" action="/devices/{{ client.mac }}/unblock"
+            onsubmit="return confirm('Resume {{ client.name or client.mac }}?')">
+        <button type="submit" class="btn btn-success">&#9654; Resume</button>
+      </form>
+      {% else %}
+      <form method="post" action="/devices/{{ client.mac }}/block"
+            onsubmit="return confirm('Pause {{ client.name or client.mac }}?')">
+        <button type="submit" class="btn btn-danger">&#9208; Pause</button>
+      </form>
+      {% endif %}
+      <div class="timer-btn-row">
+        {% for mins, label in [(15,"15m"),(30,"30m"),(60,"1h"),(120,"2h")] %}
+        <form method="post" action="/devices/{{ client.mac }}/pause_timer">
+          <input type="hidden" name="duration_minutes" value="{{ mins }}">
+          <button type="submit" class="btn-timer">{{ label }}</button>
+        </form>
+        {% endfor %}
+      </div>
+      {% if profiles %}
+      <form method="post" action="/devices/{{ client.mac }}/assign" class="assign-form">
+        <input type="hidden" name="local_name" value="{{ client.name }}">
+        <div class="control-card-assign-row">
+          <select name="profile_id" aria-label="Choose profile">
+            {% for profile in profiles %}
+            <option value="{{ profile.id }}">{{ profile.name }}</option>
+            {% endfor %}
+          </select>
+          <button type="submit" class="btn btn-secondary">Add to Profile</button>
+        </div>
+      </form>
+      {% endif %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<!-- Desktop: table (hidden on mobile) -->
+<div class="desktop-table card responsive-table">
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Name / Hostname</th>
+          <th>MAC Address</th>
+          <th>IP Address</th>
+          <th>Connection</th>
+          <th>Access</th>
+          <th>Profile</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for client in clients %}
+        <tr>
+          <td data-label="Name" class="cell-primary">
+            <strong>{{ client.name or "Unknown" }}</strong>
+          </td>
+
+          <td data-label="MAC" class="cell-secondary font-mono text-xs">
+            {{ client.mac }}
+          </td>
+
+          <td data-label="IP" class="cell-secondary">
+            {{ client.ip or "—" }}
+          </td>
+
+          <td data-label="Connection" class="cell-badge">
+            {% if client.online %}
+              <span class="badge badge-online">Online</span>
+            {% else %}
+              <span class="badge badge-offline">Offline</span>
+            {% endif %}
+          </td>
+
+          <td data-label="Access" class="cell-badge">
+            {% if client.blocked %}
+              <span class="badge badge-blocked">Paused</span>
+            {% else %}
+              <span class="badge badge-allowed">Active</span>
+            {% endif %}
+          </td>
+
+          <td data-label="Profile" class="cell-secondary">
+            {% if client.mac in mac_profile_names and mac_profile_names[client.mac] %}
+              {% for pname in mac_profile_names[client.mac] %}
+                <span class="badge badge-assigned">{{ pname }}</span>
+              {% endfor %}
+            {% else %}
+              <span class="text-muted text-xs">—</span>
+            {% endif %}
+          </td>
+
+          <td data-label="Actions" class="actions-cell">
+            {% set dtimer = device_timers.get(client.mac) %}
+            {% if dtimer %}
+            <div style="margin-bottom:0.4rem">
+              <span class="timer-pill">&#9201; Until {{ device_timer_display[client.mac] }}</span>
+              <form method="post" action="/devices/{{ client.mac }}/cancel_timer" style="display:inline">
+                <button type="submit" class="btn btn-secondary btn-sm" style="margin-left:4px">Cancel</button>
+              </form>
+            </div>
+            {% endif %}
+            <div class="btn-group">
+              {% if client.blocked %}
+              <form method="post" action="/devices/{{ client.mac }}/unblock"
+                    onsubmit="return confirm('Resume {{ client.name or client.mac }}?')">
+                <button type="submit" class="btn btn-success btn-sm">&#9654; Resume</button>
+              </form>
+              {% else %}
+              <form method="post" action="/devices/{{ client.mac }}/block"
+                    onsubmit="return confirm('Pause {{ client.name or client.mac }}?')">
+                <button type="submit" class="btn btn-danger btn-sm">&#9208; Pause</button>
+              </form>
+              {% endif %}
+              {% for mins, label in [(15,"15m"),(30,"30m"),(60,"1h"),(120,"2h")] %}
+              <form method="post" action="/devices/{{ client.mac }}/pause_timer">
+                <input type="hidden" name="duration_minutes" value="{{ mins }}">
+                <button type="submit" class="btn-timer">{{ label }}</button>
+              </form>
+              {% endfor %}
+              {% if profiles %}
+              <form method="post" action="/devices/{{ client.mac }}/assign" class="assign-form">
+                <input type="hidden" name="local_name" value="{{ client.name }}">
+                <div class="form-inline">
+                  <select name="profile_id" aria-label="Choose profile">
+                    {% for profile in profiles %}
+                    <option value="{{ profile.id }}">{{ profile.name }}</option>
+                    {% endfor %}
+                  </select>
+                  <button type="submit" class="btn btn-secondary btn-sm">Add</button>
+                </div>
+              </form>
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% else %}
+<div class="card">
+  <div class="empty-state">
+    <p>No devices cached yet.</p>
+    <p class="text-sm">
+      Click <strong>Refresh from Omada</strong> above to load your current device list.<br>
+      Make sure the Omada connection is configured on the
+      <a href="/settings">Settings</a> page first.
+    </p>
+  </div>
+</div>
+{% endif %}
+
+{% if clients and not profiles %}
+<div class="card mt-2">
+  <div class="card-body">
+    <p class="text-muted text-sm">
+      No profiles yet.
+      <a href="/profiles">Create a profile</a>
+      to start grouping devices so you can pause them all at once.
+    </p>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

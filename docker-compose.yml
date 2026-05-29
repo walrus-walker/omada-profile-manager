@@ -1,0 +1,13 @@
+services:
+  net-profile-manager:
+    build: .
+    container_name: net-profile-manager
+    restart: unless-stopped
+    ports:
+      - "${APP_PORT:-8095}:8095"
+    volumes:
+      - ./data:/data
+    env_file:
+      - .env
+    environment:
+      - DATABASE_PATH=/data/net-profile-manager.db
