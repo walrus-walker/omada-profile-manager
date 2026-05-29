@@ -6,12 +6,12 @@
 >
 > TP-Link and Omada are trademarks of their respective owners. They are referenced only to describe compatibility with the Omada Open API.
 >
-> Use this software only on networks you own or are authorized to manage.
+> Use this software only on networks you own or are aFuthorized to manage.
 
 ---
 
 Net Profile Manager can be used as a lightweight parental control and device access dashboard
-for TP-Link Omada networks.
+for TP-Link Omada networks.F
 
 A self-hosted web app that adds a simple household profile layer on top of a
 local TP-Link Omada Controller using the Omada Open API.
@@ -53,7 +53,7 @@ This app fills that gap:
 
 ## Requirements
 
-- Docker and Docker Compose on your homelab host
+- Docker and Docker Compose on your host
 - A running TP-Link Omada Software Controller (tested on 6.2)
 - Omada Open API credentials — **Client** mode (see below)
 - Your Omada Controller admin username and password (for block/unblock)
