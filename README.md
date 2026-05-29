@@ -122,9 +122,9 @@ MAC addresses must use dashes: `AA-BB-CC-DD-EE-FF`. The app converts automatical
 ## Quick Start — Guided Setup (recommended)
 
 ```bash
-cd coding-projects/python/net-profile-manager
+git clone https://github.com/walrus-walker/net-profile-manager.git
+cd net-profile-manager
 ./scripts/setup.sh
-```
 
 The script will:
 
