@@ -268,7 +268,6 @@ net-profile-manager/
 ├── Dockerfile
 ├── requirements.txt
 ├── .env.example
-├── CHANGELOG.md
 └── SECURITY.md
 ```
 
