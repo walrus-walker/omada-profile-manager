@@ -10,6 +10,9 @@
 
 ---
 
+Net Profile Manager can be used as a lightweight parental control and device access dashboard
+for TP-Link Omada networks.
+
 A self-hosted web app that adds a simple household profile layer on top of a
 local TP-Link Omada Controller using the Omada Open API.
 
