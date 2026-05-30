@@ -76,11 +76,6 @@ You register an API application inside the Omada Controller web UI.
    - **Client Secret** → `OMADA_CLIENT_SECRET`
 7. Copy your **Omada ID** (also called omadacId) — shown on the same Open API page
    or visible in the browser URL bar when logged into the controller → `OMADA_CONTROLLER_ID`
-8. Find your **Site ID**:
-   - Go to **Settings → Test Connection** in this app after setup, then look at the
-     discovered sites table — it shows site names and their IDs
-   - Put the correct ID into `OMADA_SITE_ID`
-
 > **Important:** Use **Client** mode, not Authorization Code. Auth Code requires a
 > browser redirect and will not work with this app.
 
