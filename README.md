@@ -1,4 +1,4 @@
-# Net Profile Manager
+# Omada Profile Manager
 
 > **Disclaimer**
 >
