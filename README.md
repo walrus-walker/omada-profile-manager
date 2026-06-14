@@ -2,7 +2,7 @@
 
 > **Disclaimer**
 >
-> Net Profile Manager is an independent, unofficial project. It is not affiliated with, endorsed by, or sponsored by TP-Link or Omada.
+> Omada Profile Manager is an independent, unofficial project. It is not affiliated with, endorsed by, or sponsored by TP-Link or Omada.
 >
 > TP-Link and Omada are trademarks of their respective owners. They are referenced only to describe compatibility with the Omada Open API.
 >
